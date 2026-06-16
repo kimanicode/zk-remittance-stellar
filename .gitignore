@@ -1,0 +1,44 @@
+node_modules/
+dist/
+build/
+
+# Test snapshots
+contracts/test_snapshots/
+
+# Rust lock file (not committed for CD/contracts)
+contracts/Cargo.lock
+
+# Circuit build artifacts (except final zkey)
+circuits/build/remittance.r1cs
+circuits/build/remittance.sym
+circuits/build/remittance_js/
+circuits/build/remittance_0000.zkey
+circuits/build/remittance_final.zkey
+circuits/build/verification_key.json
+circuits/build/proof.json
+circuits/build/public.json
+circuits/build/pot*.ptau
+circuits/node_modules/
+
+# Rust build artifacts
+contracts/target/
+
+# Env files
+.env
+.env.local
+
+# Contract deployment artifacts
+.contract_id
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

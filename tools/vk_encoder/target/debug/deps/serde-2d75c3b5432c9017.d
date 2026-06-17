@@ -1,0 +1,14 @@
+/home/kimani/stellar-hack/zk-remittance-stellar/tools/vk_encoder/target/debug/deps/serde-2d75c3b5432c9017.d: /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/kimani/stellar-hack/zk-remittance-stellar/tools/vk_encoder/target/debug/build/serde-830168119362d6eb/out/private.rs
+
+/home/kimani/stellar-hack/zk-remittance-stellar/tools/vk_encoder/target/debug/deps/libserde-2d75c3b5432c9017.rlib: /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/kimani/stellar-hack/zk-remittance-stellar/tools/vk_encoder/target/debug/build/serde-830168119362d6eb/out/private.rs
+
+/home/kimani/stellar-hack/zk-remittance-stellar/tools/vk_encoder/target/debug/deps/libserde-2d75c3b5432c9017.rmeta: /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/kimani/stellar-hack/zk-remittance-stellar/tools/vk_encoder/target/debug/build/serde-830168119362d6eb/out/private.rs
+
+/home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/home/kimani/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/home/kimani/stellar-hack/zk-remittance-stellar/tools/vk_encoder/target/debug/build/serde-830168119362d6eb/out/private.rs:
+
+# env-dep:OUT_DIR=/home/kimani/stellar-hack/zk-remittance-stellar/tools/vk_encoder/target/debug/build/serde-830168119362d6eb/out

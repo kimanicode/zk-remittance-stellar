@@ -1,12 +1,6 @@
 #![no_std]
 
-mod groth16;
-mod vk_constants;
-
-use crate::groth16::verify_groth16;
-use soroban_sdk::crypto::bn254::{
-    Bn254G1Affine, Bn254G2Affine,
-};
+use soroban_sdk::crypto::bls12_381::{Bls12381Fr as Fr, Bls12381G1Affine as G1Affine, Bls12381G2Affine as G2Affine};
 use soroban_sdk::{
     contract, contractimpl, contracttype, token, Address, BytesN, Env, Vec,
 };
@@ -18,6 +12,57 @@ pub enum DataKey {
     Admin,
     Volume(BytesN<32>),
     Token,
+}
+
+fn vk_alpha(env: &Env) -> G1Affine {
+    G1Affine::from_array(env, &VK_ALPHA)
+}
+fn vk_beta(env: &Env) -> G2Affine {
+    G2Affine::from_array(env, &VK_BETA)
+}
+fn vk_gamma(env: &Env) -> G2Affine {
+    G2Affine::from_array(env, &VK_GAMMA)
+}
+fn vk_delta(env: &Env) -> G2Affine {
+    G2Affine::from_array(env, &VK_DELTA)
+}
+fn vk_ic(env: &Env) -> Vec<G1Affine> {
+    let mut v = Vec::new(env);
+    for ic in VK_IC.iter() {
+        v.push_back(G1Affine::from_array(env, ic));
+    }
+    v
+}
+
+// Paste these from circuits/build_bls/vk.hex — see instructions below
+mod vk_constants;
+use vk_constants::{VK_ALPHA, VK_BETA, VK_GAMMA, VK_DELTA, VK_IC};
+
+fn verify_groth16(
+    env: &Env,
+    proof_a: &G1Affine,
+    proof_b: &G2Affine,
+    proof_c: &G1Affine,
+    public_signals: &Vec<Fr>,
+) -> bool {
+    let bls = env.crypto().bls12_381();
+    let ic = vk_ic(env);
+
+    if public_signals.len() + 1 != ic.len() {
+        return false;
+    }
+
+    let mut vk_x = ic.get(0).unwrap();
+    for (s, v) in public_signals.iter().zip(ic.iter().skip(1)) {
+        let prod = bls.g1_mul(&v, &s);
+        vk_x = bls.g1_add(&vk_x, &prod);
+    }
+
+    let neg_a = -proof_a.clone();
+    let vp1 = Vec::from_array(env, [neg_a, vk_alpha(env), vk_x, proof_c.clone()]);
+    let vp2 = Vec::from_array(env, [proof_b.clone(), vk_beta(env), vk_gamma(env), vk_delta(env)]);
+
+    bls.pairing_check(vp1, vp2)
 }
 
 #[contract]
@@ -52,67 +97,48 @@ impl RemittanceContract {
         token_client.transfer(&from, &env.current_contract_address(), &amount);
     }
 
-    /// Verify a Groth16 proof, check nullifier, and release funds.
-    ///
-    /// Public signals: [merkle_root, nullifier_hash, recipient_hash]
-    ///
-    /// NOTE: The recipient hash is computed as `Poseidon(recipient_address)` in the
-    /// circuit. The contract stores it for compliance volume tracking but does NOT
-    /// independently verify it on-chain (Poseidon hash is not directly available in
-    /// the SDK without the rs-soroban-poseidon crate). The proof itself guarantees
-    /// the binding. In production, verify with rs-soroban-poseidon.
     pub fn send(
         env: Env,
         sender: Address,
-        proof_a: Bn254G1Affine,
-        proof_b: Bn254G2Affine,
-        proof_c: Bn254G1Affine,
-        public_signals: Vec<BytesN<32>>,
+        proof_a: G1Affine,
+        proof_b: G2Affine,
+        proof_c: G1Affine,
+        public_signals: Vec<Fr>,
+        merkle_root_bytes: BytesN<32>,
+        nullifier_hash_bytes: BytesN<32>,
+        recipient_hash_bytes: BytesN<32>,
         recipient: Address,
         amount: i128,
     ) -> bool {
         sender.require_auth();
 
-        let merkle_root_signal = public_signals.get(0).unwrap();
-        let nullifier_hash = public_signals.get(1).unwrap();
-        let recipient_hash_signal = public_signals.get(2).unwrap();
-
-        // 1. Verify Merkle root matches stored root
         let stored_root: BytesN<32> = env.storage().instance().get(&DataKey::MerkleRoot).unwrap();
-        if merkle_root_signal != stored_root {
+        if merkle_root_bytes != stored_root {
             panic!("merkle root mismatch");
         }
 
-        // 2. Check nullifier has not been used (anti-replay)
-        let nullifier_key = DataKey::UsedNullifier(nullifier_hash.clone());
+        let nullifier_key = DataKey::UsedNullifier(nullifier_hash_bytes.clone());
         if env.storage().instance().has(&nullifier_key) {
             panic!("nullifier already used");
         }
 
-        // 3. Verify the Groth16 proof
-        let vk = vk_constants::get_verification_key(&env);
-        if !verify_groth16(&env, &vk, &proof_a, &proof_b, &proof_c, &public_signals) {
+        if !verify_groth16(&env, &proof_a, &proof_b, &proof_c, &public_signals) {
             panic!("proof verification failed");
         }
 
-        // 4. Mark nullifier as used
         env.storage().instance().set(&nullifier_key, &true);
 
-        // 5. Transfer tokens to recipient
         let token_addr: Address = env.storage().instance().get(&DataKey::Token).unwrap();
         let token_client = token::Client::new(&env, &token_addr);
         token_client.transfer(&env.current_contract_address(), &recipient, &amount);
 
-        // 6. Update compliance volume tally
-        let volume_key = DataKey::Volume(recipient_hash_signal.clone());
+        let volume_key = DataKey::Volume(recipient_hash_bytes.clone());
         let current_volume: i128 = env.storage().instance().get(&volume_key).unwrap_or(0);
         env.storage().instance().set(&volume_key, &(current_volume + amount));
 
         true
     }
 
-    /// Compliance query: has any address matching this hash exceeded the threshold?
-    /// Returns (exceeded: bool, nullifier_proof: BytesN<32>).
     pub fn compliance_query(
         env: Env,
         address_hash: BytesN<32>,
@@ -122,7 +148,6 @@ impl RemittanceContract {
         let total_volume: i128 = env.storage().instance().get(&volume_key).unwrap_or(0);
         let exceeded = total_volume > threshold;
 
-        // Derive a verifiable query proof: keccak256(address_hash || threshold_bytes)
         let mut combined = [0u8; 64];
         combined[..32].copy_from_slice(&address_hash.to_array());
         let threshold_be = threshold.to_be_bytes();
@@ -132,12 +157,16 @@ impl RemittanceContract {
         (exceeded, proof_nullifier.into())
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use soroban_sdk::testutils::Address as _;
     use soroban_sdk::{Env, BytesN};
+    use ark_bls12_381::{Fq, Fq2};
+    use ark_serialize::CanonicalSerialize;
+    use core::str::FromStr;
+    use soroban_sdk::crypto::bls12_381::{G1Affine as BlsG1, G2Affine as BlsG2, Fr as BlsFr, G1_SERIALIZED_SIZE, G2_SERIALIZED_SIZE};
+    use soroban_sdk::U256;
 
     fn setup_env() -> (Env, RemittanceContractClient<'static>, Address, Address) {
         let env = Env::default();
@@ -150,6 +179,7 @@ mod tests {
         client.initialize(&admin, &root, &token);
         (env, client, admin, token)
     }
+    
 
     #[test]
     fn test_initialize() {

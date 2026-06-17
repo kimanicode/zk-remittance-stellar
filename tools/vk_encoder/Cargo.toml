@@ -1,0 +1,13 @@
+[package]
+name = "vk-encoder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ark-bls12-381 = "0.4.0"
+ark-serialize = "0.4.2"
+ark-ff = "0.4.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+num-bigint = "0.4"
+hex = "0.4"

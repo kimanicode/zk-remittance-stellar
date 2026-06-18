@@ -1,22 +1,12 @@
 import {
   Contract,
-  Networks,
   Keypair,
+  Networks,
   SorobanRpc,
   TransactionBuilder,
   nativeToScVal,
   xdr,
-  Address as StellarAddress,
 } from "@stellar/stellar-sdk";
-
-function decimalToBytes32(decimalStr) {
-  const hex = BigInt(decimalStr).toString(16).padStart(64, "0");
-  const bytes = new Uint8Array(32);
-  for (let i = 0; i < 32; i++) {
-    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-  }
-  return bytes.reverse();
-}
 
 const SERVER_URL =
   import.meta.env.VITE_SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org";
@@ -26,17 +16,42 @@ const NETWORK_PASSPHRASE = Networks.TESTNET;
 const server = new SorobanRpc.Server(SERVER_URL);
 const contract = new Contract(CONTRACT_ID);
 
-function scValFromProofPoint(x, y) {
-  return nativeToScVal(
-    { x: x, y: y },
-    { type: "struct", fields: { x: "bytes32", y: "bytes32" } },
+function hexToBytes(hex) {
+  const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
+  const bytes = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(clean.substr(i * 2, 2), 16);
+  }
+  return bytes;
+}
+
+function decimalToU256ScVal(decimalStr) {
+  // Build a u256 ScVal from a decimal string using BigInt -> 4x u64 limbs
+  const n = BigInt(decimalStr);
+  const mask64 = (1n << 64n) - 1n;
+  const hiHi = (n >> 192n) & mask64;
+  const hiLo = (n >> 128n) & mask64;
+  const loHi = (n >> 64n) & mask64;
+  const loLo = n & mask64;
+  return xdr.ScVal.scvU256(
+    new xdr.UInt256Parts({
+      hiHi: xdr.Uint64.fromString(hiHi.toString()),
+      hiLo: xdr.Uint64.fromString(hiLo.toString()),
+      loHi: xdr.Uint64.fromString(loHi.toString()),
+      loLo: xdr.Uint64.fromString(loLo.toString()),
+    }),
   );
 }
 
 export async function submitProof({
   senderKeypair,
-  proof,
-  publicSignals,
+  proofAHex,
+  proofBHex,
+  proofCHex,
+  publicSignalsDecimal, // array of 3 decimal strings: [nullifier, recipientHash, merkleRoot]
+  merkleRootHex,
+  nullifierHashHex,
+  recipientHashHex,
   recipient,
   amount,
 }) {
@@ -46,27 +61,17 @@ export async function submitProof({
       : senderKeypair;
   const account = await server.getAccount(keypair.publicKey());
 
-  const proofA = xdr.ScVal.scvVec([
-    xdr.ScVal.scvBytes(decimalToBytes32(proof.pi_a[0])),
-    xdr.ScVal.scvBytes(decimalToBytes32(proof.pi_a[1])),
-  ]);
-  const proofB = xdr.ScVal.scvVec([
-    xdr.ScVal.scvVec([
-      xdr.ScVal.scvBytes(decimalToBytes32(proof.pi_b[0][0])),
-      xdr.ScVal.scvBytes(decimalToBytes32(proof.pi_b[0][1])),
-    ]),
-    xdr.ScVal.scvVec([
-      xdr.ScVal.scvBytes(decimalToBytes32(proof.pi_b[1][0])),
-      xdr.ScVal.scvBytes(decimalToBytes32(proof.pi_b[1][1])),
-    ]),
-  ]);
-  const proofC = xdr.ScVal.scvVec([
-    xdr.ScVal.scvBytes(decimalToBytes32(proof.pi_c[0])),
-    xdr.ScVal.scvBytes(decimalToBytes32(proof.pi_c[1])),
-  ]);
-  const pubSignals = xdr.ScVal.scvVec(
-    publicSignals.map((s) => xdr.ScVal.scvBytes(decimalToBytes32(s))),
+  const proofA = xdr.ScVal.scvBytes(hexToBytes(proofAHex));
+  const proofB = xdr.ScVal.scvBytes(hexToBytes(proofBHex));
+  const proofC = xdr.ScVal.scvBytes(hexToBytes(proofCHex));
+
+  const publicSignals = xdr.ScVal.scvVec(
+    publicSignalsDecimal.map((d) => decimalToU256ScVal(d)),
   );
+
+  const merkleRootBytes = xdr.ScVal.scvBytes(hexToBytes(merkleRootHex));
+  const nullifierHashBytes = xdr.ScVal.scvBytes(hexToBytes(nullifierHashHex));
+  const recipientHashBytes = xdr.ScVal.scvBytes(hexToBytes(recipientHashHex));
 
   const tx = new TransactionBuilder(account, {
     fee: "1000000",
@@ -79,7 +84,10 @@ export async function submitProof({
         proofA,
         proofB,
         proofC,
-        pubSignals,
+        publicSignals,
+        merkleRootBytes,
+        nullifierHashBytes,
+        recipientHashBytes,
         nativeToScVal(recipient, { type: "address" }),
         nativeToScVal(amount, { type: "i128" }),
       ),
@@ -90,12 +98,19 @@ export async function submitProof({
   const preparedTx = await server.prepareTransaction(tx);
   preparedTx.sign(keypair);
   const result = await server.sendTransaction(preparedTx);
-
   return result;
 }
 
-export async function queryCompliance({ addressHash, threshold }) {
-  const account = await server.getAccount(CONTRACT_ID);
+export async function queryCompliance({ addressHashHex, threshold }) {
+  const contractAccount = await server
+    .getAccount(Keypair.random().publicKey())
+    .catch(() => null);
+
+  // Use a throwaway funded account isn't ideal for sim; instead use simulate with a dummy source
+  // For simplicity in the demo, reuse alice's account for simulation context
+  const aliceSecret = import.meta.env.VITE_ALICE_SECRET;
+  const aliceKeypair = Keypair.fromSecret(aliceSecret);
+  const account = await server.getAccount(aliceKeypair.publicKey());
 
   const tx = new TransactionBuilder(account, {
     fee: "1000000",
@@ -104,7 +119,7 @@ export async function queryCompliance({ addressHash, threshold }) {
     .addOperation(
       contract.call(
         "compliance_query",
-        nativeToScVal(addressHash, { type: "bytes32" }),
+        xdr.ScVal.scvBytes(hexToBytes(addressHashHex)),
         nativeToScVal(threshold, { type: "i128" }),
       ),
     )
@@ -112,19 +127,19 @@ export async function queryCompliance({ addressHash, threshold }) {
     .build();
 
   const result = await server.simulateTransaction(tx);
-
-  if (result.error) {
+  if (SorobanRpc.Api.isSimulationError(result)) {
     throw new Error(result.error);
   }
 
-  // Parse the simulation result
-  const returnValue = result.result?.retval;
-  if (returnValue) {
-    return {
-      exceeded: returnValue[0] === true,
-      nullifierHash: returnValue[1]?.toString() || "",
-    };
-  }
+  const retval = result.result?.retval;
+  if (!retval) return { exceeded: false, nullifierHash: "" };
 
-  return { exceeded: false, nullifierHash: "" };
+  const parts = retval.vec();
+  const exceeded = parts[0].b();
+  const nullifierBytes = parts[1].bytes();
+  const nullifierHash = Array.from(nullifierBytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  return { exceeded, nullifierHash };
 }

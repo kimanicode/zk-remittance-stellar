@@ -1,5 +1,6 @@
 import { groth16 } from "snarkjs";
 import { StrKey } from "@stellar/stellar-sdk";
+import { encodeG1, encodeG2, bytesToHex, decimalToHex32 } from "./blsEncode.js";
 
 function addressToField(address) {
   try {
@@ -22,20 +23,14 @@ export async function generateProof({
   merklePathIndices,
   merkleRoot,
 }) {
-  if (!merklePath) {
-    merklePath = Array(20).fill("0");
-  }
-  if (!merklePathIndices) {
-    merklePathIndices = Array(20).fill("0");
-  }
-  if (!nonce) {
-    nonce = Math.floor(Math.random() * 1000000).toString();
-  }
+  if (!merklePath) merklePath = Array(20).fill("0");
+  if (!merklePathIndices) merklePathIndices = Array(20).fill("0");
+  if (!nonce) nonce = Math.floor(Math.random() * 1000000).toString();
 
   const input = {
     merkle_root:
       merkleRoot ||
-      "21366341404617559109078536841419919559345075898020461913054443477245838208360",
+      "7846114547599950979977548495961514500109843146722585183135239779897529274437",
     address: addressToField(senderAddress),
     merkle_path: merklePath,
     merkle_path_indices: merklePathIndices,
@@ -43,6 +38,8 @@ export async function generateProof({
     nonce: nonce.toString(),
     recipient_address: addressToField(recipientAddress),
   };
+  console.log("DEBUG address field:", input.address);
+  console.log("DEBUG merkle_root:", input.merkle_root);
 
   const { proof, publicSignals } = await groth16.fullProve(
     input,
@@ -50,23 +47,23 @@ export async function generateProof({
     "/remittance_final.zkey",
   );
 
-  return { proof, publicSignals, nonce };
-}
+  // publicSignals order: [nullifier_hash, recipient_hash, merkle_root]
+  const proofAHex = bytesToHex(encodeG1(proof.pi_a));
+  const proofBHex = bytesToHex(encodeG2(proof.pi_b));
+  const proofCHex = bytesToHex(encodeG1(proof.pi_c));
 
-export function formatProofForContract(proof, publicSignals) {
-  // Convert proof to Soroban contract format
-  const proofA = [proof.pi_a[0], proof.pi_a[1]];
-  const proofB = [
-    [proof.pi_b[0][0], proof.pi_b[0][1]],
-    [proof.pi_b[1][0], proof.pi_b[1][1]],
-  ];
-  const proofC = [proof.pi_c[0], proof.pi_c[1]];
-  const pubSignals = publicSignals.map((s) => s.toString());
+  const nullifierHashHex = decimalToHex32(publicSignals[0]);
+  const recipientHashHex = decimalToHex32(publicSignals[1]);
+  const merkleRootHex = decimalToHex32(publicSignals[2]);
 
-  return { proofA, proofB, proofC, pubSignals };
-}
-
-export function bigIntToBytes32BE(bigint) {
-  const hex = bigint.toString(16).padStart(64, "0");
-  return "0x" + hex;
+  return {
+    proofAHex,
+    proofBHex,
+    proofCHex,
+    publicSignalsDecimal: publicSignals.map((s) => s.toString()),
+    merkleRootHex,
+    nullifierHashHex,
+    recipientHashHex,
+    nonce,
+  };
 }

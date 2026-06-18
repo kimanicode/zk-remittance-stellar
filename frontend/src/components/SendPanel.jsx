@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import ProofStatus from "./ProofStatus.jsx";
-import { generateProof, formatProofForContract } from "../lib/proof.js";
+import { generateProof } from "../lib/proof.js";
 import { submitProof } from "../lib/stellar.js";
 
 const styles = {
@@ -80,21 +80,35 @@ export default function SendPanel() {
         "GBX3XPJR4NIO2IVDJNVFHMIBWFVQXBN7IWFMY5FK6IALSOFGAO6BVKNX";
 
       // Step 1: Generate proof
-      const { proof, publicSignals } = await generateProof({
+      const {
+        proofAHex,
+        proofBHex,
+        proofCHex,
+        publicSignalsDecimal,
+        merkleRootHex,
+        nullifierHashHex,
+        recipientHashHex,
+      } = await generateProof({
         senderAddress,
         recipientAddress: recipient,
         amount: amountNum,
         merkleRoot:
-          "11401665786778752519753685494636411257946013769947642740777125184080191240841",
+          "40358931300632933350769883338497611674297341631427651364528416116208948793141",
       });
       setSteps(["done", "active", "pending"]);
+
       // Step 2: Submit to Stellar
       const result = await submitProof({
         senderKeypair: import.meta.env.VITE_ALICE_SECRET, // TODO: integrate wallet
-        proof,
-        publicSignals,
+        proofAHex,
+        proofBHex,
+        proofCHex,
+        publicSignalsDecimal,
+        merkleRootHex,
+        nullifierHashHex,
+        recipientHashHex,
         recipient,
-        amount: Math.round(amountNum * 1e7), // $1 = 10^7 stroops for USDC
+        amount: Math.round(amountNum * 1e7),
       });
       setSteps(["done", "done", "pending"]);
 

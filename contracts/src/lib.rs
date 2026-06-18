@@ -217,4 +217,81 @@ mod tests {
         let new_root = BytesN::from_array(&env, &[0xcd; 32]);
         client.update_merkle_root(&admin, &new_root);
     }
+
+    fn g1_from_coords(env: &Env, x: &str, y: &str) -> BlsG1 {
+        let ark_g1 = ark_bls12_381::G1Affine::new(Fq::from_str(x).unwrap(), Fq::from_str(y).unwrap());
+        let mut buf = [0u8; G1_SERIALIZED_SIZE];
+        ark_g1.serialize_uncompressed(&mut buf[..]).unwrap();
+        BlsG1::from_array(env, &buf)
+    }
+
+    fn g2_from_coords(env: &Env, x1: &str, x2: &str, y1: &str, y2: &str) -> BlsG2 {
+        let x = Fq2::new(Fq::from_str(x1).unwrap(), Fq::from_str(x2).unwrap());
+        let y = Fq2::new(Fq::from_str(y1).unwrap(), Fq::from_str(y2).unwrap());
+        let ark_g2 = ark_bls12_381::G2Affine::new(x, y);
+        let mut buf = [0u8; G2_SERIALIZED_SIZE];
+        ark_g2.serialize_uncompressed(&mut buf[..]).unwrap();
+        BlsG2::from_array(env, &buf)
+    }
+
+    fn fr_from_decimal(env: &Env, decimal: &str) -> BlsFr {
+    extern crate std;
+    use std::vec::Vec as StdVec;
+
+    let mut digits: StdVec<u8> = decimal.bytes().map(|b| b - b'0').collect();
+    let mut be_bytes = [0u8; 32];
+    let mut idx = 32;
+    while digits.iter().any(|&d| d != 0) {
+        idx -= 1;
+        let mut remainder = 0u32;
+        let mut new_digits: StdVec<u8> = StdVec::with_capacity(digits.len());
+        for &d in digits.iter() {
+            let acc = remainder * 10 + d as u32;
+            new_digits.push((acc / 256) as u8);
+            remainder = acc % 256;
+        }
+        while new_digits.len() > 1 && new_digits[0] == 0 {
+            new_digits.remove(0);
+        }
+        be_bytes[idx] = remainder as u8;
+        digits = new_digits;
+    }
+    let u256 = U256::from_be_bytes(env, &soroban_sdk::Bytes::from_array(env, &be_bytes));
+    BlsFr::from_u256(u256)
+}
+
+    #[test]
+    fn test_real_proof_verifies() {
+        let env = Env::default();
+
+        let proof_a = g1_from_coords(
+            &env,
+            "505387286724809896153419658486968207792271809469232742356671033209831789071395220767618582584574036784467059953322",
+            "2314874925631832125074206236355621576446799618317839496336095146062562417785552263693684020851308774660574592655492",
+        );
+        let proof_b = g2_from_coords(
+            &env,
+            "564528682345875868040534713056940128133317818734248223522366535920028137000455412378500005665095377451086606267772",
+            "1824447613159836180191589467225833848366237930123637762202486032582316206232080504447936231932162656237605483451277",
+            "165441449875583144405526853810182936630994851701104021995167498084711137679750705848681543472376838718792394538703",
+            "3056624173584165212660964078056793908496867132054742465259189305012941042639232496184471587462592113476841275531112",
+        );
+        let proof_c = g1_from_coords(
+            &env,
+            "3448879368066358049625749150800341060640821325034647296690178109389735422360933608508016126457577910794338540729843",
+            "413184489202805617387150851107604549948922495442587887251759441033435408320691074637535733566354482484770524332777",
+        );
+
+        let public_signals = Vec::from_array(
+            &env,
+            [
+                fr_from_decimal(&env, "35589585953691632558272894079331513500970933280696499180108172190558787687138"),
+                fr_from_decimal(&env, "35593111616396134186576814526464192374299791797224184116117225386017056746936"),
+                fr_from_decimal(&env, "7846114547599950979977548495961514500109843146722585183135239779897529274437"),
+            ],
+        );
+
+        let result = verify_groth16(&env, &proof_a, &proof_b, &proof_c, &public_signals);
+        assert!(result, "real proof should verify successfully");
+    }
 }

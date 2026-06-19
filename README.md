@@ -178,7 +178,7 @@ We ran the full pipeline against this deployed contract and confirmed, on real t
 | Web Worker for proof generation                                          | Hackathon        | `groth16.fullProve` currently blocks the main thread for ~10s                                                                                                                                                   |
 | Compliance query privacy                                                 | Hackathon        | Volume stored as plain `i128` keyed by recipient hash - a production version would want a more sophisticated scheme (e.g. homomorphic tallying) so even aggregate volume isn't visible to the contract operator |
 | Powers of Tau ceremony                                                   | Hackathon        | Single-contributor local ceremony - production needs a real multi-party ceremony                                                                                                                                |
-| Contract ownership                                                       | Demo             | Single admin key — production needs multisig or DAO governance                                                                                                                                                  |
+| Contract ownership                                                       | Demo             | Single admin key - production needs multisig or DAO governance                                                                                                                                                  |
 
 ### Team
 

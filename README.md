@@ -1,10 +1,10 @@
 # ZK Remittance on Stellar
 
-Private cross-border remittance powered by zero-knowledge proofs on Stellar's Soroban platform. Send money under $10,000 with KYC compliance — without revealing your identity, exact amount, or recipient on the public ledger.
+Private cross-border remittance powered by zero-knowledge proofs on Stellar's Soroban platform. Send money under $10,000 with KYC compliance , without revealing your identity, exact amount, or recipient on the public ledger.
 
 ### Why ZK
 
-Without ZK, you face an impossible choice: full transparency (every transaction visible on-chain — no privacy) or full anonymity (no compliance — money laundering risk). ZK threads the needle by letting a sender prove "I am KYC-verified, my amount is under $10,000, and I haven't reused this proof before" without revealing _which_ KYC'd user they are, the _exact_ amount, or _who_ the recipient is, beyond a one-way hash. The smart contract verifies one Groth16 proof and releases the funds — it learns only a Merkle root, a nullifier hash, and a recipient hash. Nothing else.
+Without ZK, you face an impossible choice: full transparency (every transaction visible on-chain - no privacy) or full anonymity (no compliance - money laundering risk). ZK threads the needle by letting a sender prove "I am KYC-verified, my amount is under $10,000, and I haven't reused this proof before" without revealing _which_ KYC'd user they are, the _exact_ amount, or _who_ the recipient is, beyond a one-way hash. The smart contract verifies one Groth16 proof and releases the funds , it learns only a Merkle root, a nullifier hash, and a recipient hash. Nothing else.
 
 This is genuinely load-bearing ZK: without it, the contract would have to choose between checking KYC status in the clear (no privacy) or skipping the check entirely (no compliance).
 
@@ -51,8 +51,8 @@ This is genuinely load-bearing ZK: without it, the contract would have to choose
 
 - Node.js 18+
 - Rust with `wasm32v1-none` target (`rustup target add wasm32v1-none`)
-- Circom 2.0+ compiled from source (`git clone https://github.com/iden3/circom && cd circom && cargo install --path circom`) — the npm package `circom` is the old, incompatible 1.x line
-- Stellar CLI (prebuilt binary recommended: see [stellar/stellar-cli releases](https://github.com/stellar/stellar-cli/releases) — `cargo install stellar-cli` works but requires `pkg-config`, `libssl-dev`, `libdbus-1-dev`, `libudev-dev` system packages on Linux)
+- Circom 2.0+ compiled from source (`git clone https://github.com/iden3/circom && cd circom && cargo install --path circom`) - the npm package `circom` is the old, incompatible 1.x line
+- Stellar CLI (prebuilt binary recommended: see [stellar/stellar-cli releases](https://github.com/stellar/stellar-cli/releases) - `cargo install stellar-cli` works but requires `pkg-config`, `libssl-dev`, `libdbus-1-dev`, `libudev-dev` system packages on Linux)
 - A funded Stellar testnet account (`stellar keys generate alice && stellar keys fund alice --network testnet`)
 
 **Step 1: Install dependencies**
@@ -161,7 +161,7 @@ We ran the full pipeline against this deployed contract and confirmed, on real t
 
 - A real Groth16 proof, generated from the actual circuit and trusted setup, verified successfully via `env.crypto().bls12_381().pairing_check()` inside the deployed contract
 - A real token transfer executed only after that verification passed
-- Resubmitting the identical proof a second time was rejected by the nullifier check (`Error(WasmVm, InvalidAction)` — `panic!("nullifier already used")`), confirming replay protection works
+- Resubmitting the identical proof a second time was rejected by the nullifier check (`Error(WasmVm, InvalidAction)` - `panic!("nullifier already used")`), confirming replay protection works
 - The compliance query returned a correct "exceeded" / "not exceeded" result with a verifiable proof hash, without exposing sender identity
 
 ### Production-Ready vs. Hackathon Shortcuts
@@ -172,15 +172,15 @@ We ran the full pipeline against this deployed contract and confirmed, on real t
 | Groth16 prover (snarkjs)                                                 | Production-ready | Standard library, runs entirely client-side in-browser                                                                                                                                                          |
 | Soroban contract (proof verification)                                    | Production-ready | Uses `soroban_sdk::crypto::bls12_381`, mirrors Stellar's own reference verifier                                                                                                                                 |
 | JS BLS12-381 point encoding                                              | Production-ready | Uses audited `@noble/curves`; byte-for-byte verified against our Rust `ark-serialize` encoder                                                                                                                   |
-| Merkle tree management                                                   | Hackathon        | Single-leaf tree for demo purposes — needs a real KYC oracle managing the full tree                                                                                                                             |
-| KYC identity verification                                                | Hackathon        | Not implemented — requires a trusted issuer producing Merkle leaves                                                                                                                                             |
-| Frontend wallet integration                                              | Hackathon        | Uses a hardcoded test keypair — needs Freighter or WalletConnect                                                                                                                                                |
+| Merkle tree management                                                   | Hackathon        | Single-leaf tree for demo purposes - needs a real KYC oracle managing the full tree                                                                                                                             |
+| KYC identity verification                                                | Hackathon        | Not implemented - requires a trusted issuer producing Merkle leaves                                                                                                                                             |
+| Frontend wallet integration                                              | Hackathon        | Uses a hardcoded test keypair - needs Freighter or WalletConnect                                                                                                                                                |
 | Web Worker for proof generation                                          | Hackathon        | `groth16.fullProve` currently blocks the main thread for ~10s                                                                                                                                                   |
-| Compliance query privacy                                                 | Hackathon        | Volume stored as plain `i128` keyed by recipient hash — a production version would want a more sophisticated scheme (e.g. homomorphic tallying) so even aggregate volume isn't visible to the contract operator |
-| Powers of Tau ceremony                                                   | Hackathon        | Single-contributor local ceremony — production needs a real multi-party ceremony                                                                                                                                |
+| Compliance query privacy                                                 | Hackathon        | Volume stored as plain `i128` keyed by recipient hash - a production version would want a more sophisticated scheme (e.g. homomorphic tallying) so even aggregate volume isn't visible to the contract operator |
+| Powers of Tau ceremony                                                   | Hackathon        | Single-contributor local ceremony - production needs a real multi-party ceremony                                                                                                                                |
 | Contract ownership                                                       | Demo             | Single admin key — production needs multisig or DAO governance                                                                                                                                                  |
 
 ### Team
 
-- Kimani Karaba — [github.com/kimanicode](https://github.com/kimanicode)
-- Built for the [Stellar Hacks: Real-World ZK](https://stellar.org/hackathon) hackathon
+- Kimani Karaba - [github.com/kimanicode](https://github.com/kimanicode)
+- Built for the [Stellar Hacks: Real-World ZK](https://dorahacks.io/hackathon/stellar-hacks-zk/detail) hackathon

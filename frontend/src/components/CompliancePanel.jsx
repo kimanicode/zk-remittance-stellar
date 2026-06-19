@@ -1,108 +1,110 @@
-import React, { useState, useCallback } from 'react';
-import { queryCompliance } from '../lib/stellar.js';
+import React, { useState, useCallback } from "react";
+import { queryCompliance } from "../lib/stellar.js";
 
 const styles = {
   panel: {
-    padding: '1.5rem',
+    padding: "1.5rem",
     borderRadius: 12,
-    border: '1px solid #e9ecef',
-    background: '#fff',
+    border: "1px solid #e9ecef",
+    background: "#fff",
   },
   title: {
-    fontSize: '1.1rem',
+    fontSize: "1.1rem",
     fontWeight: 600,
     marginTop: 0,
-    marginBottom: '1rem',
+    marginBottom: "1rem",
   },
   field: {
-    marginBottom: '0.75rem',
+    marginBottom: "0.75rem",
   },
   label: {
-    display: 'block',
-    fontSize: '0.8rem',
+    display: "block",
+    fontSize: "0.8rem",
     fontWeight: 500,
-    color: '#495057',
-    marginBottom: '0.25rem',
+    color: "#495057",
+    marginBottom: "0.25rem",
   },
   input: {
-    width: '100%',
-    padding: '0.5rem 0.75rem',
+    width: "100%",
+    padding: "0.5rem 0.75rem",
     borderRadius: 6,
-    border: '1px solid #ced4da',
-    fontSize: '0.9rem',
-    boxSizing: 'border-box',
-    fontFamily: 'monospace',
+    border: "1px solid #ced4da",
+    fontSize: "0.9rem",
+    boxSizing: "border-box",
+    fontFamily: "monospace",
   },
   button: {
-    width: '100%',
-    padding: '0.6rem',
+    width: "100%",
+    padding: "0.6rem",
     borderRadius: 6,
-    border: 'none',
-    background: '#2b8a3e',
-    color: '#fff',
-    fontSize: '0.95rem',
+    border: "none",
+    background: "#2b8a3e",
+    color: "#fff",
+    fontSize: "0.95rem",
     fontWeight: 600,
-    cursor: 'pointer',
-    marginTop: '0.5rem',
+    cursor: "pointer",
+    marginTop: "0.5rem",
   },
   buttonDisabled: {
     opacity: 0.6,
-    cursor: 'not-allowed',
+    cursor: "not-allowed",
   },
   result: {
-    marginTop: '1rem',
-    padding: '1rem',
+    marginTop: "1rem",
+    padding: "1rem",
     borderRadius: 8,
-    fontSize: '0.9rem',
+    fontSize: "0.9rem",
   },
   resultUnder: {
-    background: '#d3f9d8',
-    border: '1px solid #b2f2bb',
-    color: '#2b8a3e',
+    background: "#d3f9d8",
+    border: "1px solid #b2f2bb",
+    color: "#2b8a3e",
   },
   resultOver: {
-    background: '#ffe3e3',
-    border: '1px solid #ffc9c9',
-    color: '#c92a2a',
+    background: "#ffe3e3",
+    border: "1px solid #ffc9c9",
+    color: "#c92a2a",
   },
   nullifierLabel: {
-    fontSize: '0.7rem',
-    color: '#868e96',
-    marginTop: '0.5rem',
+    fontSize: "0.7rem",
+    color: "#868e96",
+    marginTop: "0.5rem",
   },
   nullifier: {
-    fontFamily: 'monospace',
-    fontSize: '0.7rem',
-    wordBreak: 'break-all',
-    color: '#495057',
+    fontFamily: "monospace",
+    fontSize: "0.7rem",
+    wordBreak: "break-all",
+    color: "#495057",
   },
   error: {
-    color: '#c92a2a',
-    fontSize: '0.85rem',
-    marginTop: '0.5rem',
+    color: "#c92a2a",
+    fontSize: "0.85rem",
+    marginTop: "0.5rem",
   },
 };
 
 export default function CompliancePanel() {
-  const [addressHash, setAddressHash] = useState('');
-  const [threshold, setThreshold] = useState('10000');
+  const [addressHash, setAddressHash] = useState("");
+  const [threshold, setThreshold] = useState("10000");
   const [result, setResult] = useState(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleQuery = useCallback(async () => {
-    setError('');
+    setError("");
     setResult(null);
     setLoading(true);
 
     try {
       const res = await queryCompliance({
-        addressHash: addressHash.startsWith('0x') ? addressHash.slice(2) : addressHash,
+        addressHashHex: addressHash.startsWith("0x")
+          ? addressHash.slice(2)
+          : addressHash,
         threshold: parseFloat(threshold) * 100, // USD to cents
       });
       setResult(res);
     } catch (err) {
-      setError(err.message || 'Query failed');
+      setError(err.message || "Query failed");
     } finally {
       setLoading(false);
     }
@@ -111,8 +113,16 @@ export default function CompliancePanel() {
   return (
     <div style={styles.panel}>
       <h2 style={styles.title}>Compliance Query</h2>
-      <p style={{ fontSize: '0.8rem', color: '#868e96', marginTop: '-0.5rem', marginBottom: '1rem' }}>
-        Check if an address hash has exceeded the threshold. No identity is revealed.
+      <p
+        style={{
+          fontSize: "0.8rem",
+          color: "#868e96",
+          marginTop: "-0.5rem",
+          marginBottom: "1rem",
+        }}
+      >
+        Check if an address hash has exceeded the threshold. No identity is
+        revealed.
       </p>
 
       <div style={styles.field}>
@@ -121,7 +131,7 @@ export default function CompliancePanel() {
           style={styles.input}
           placeholder="0x..."
           value={addressHash}
-          onChange={e => setAddressHash(e.target.value)}
+          onChange={(e) => setAddressHash(e.target.value)}
         />
       </div>
 
@@ -133,7 +143,7 @@ export default function CompliancePanel() {
           min="0"
           step="100"
           value={threshold}
-          onChange={e => setThreshold(e.target.value)}
+          onChange={(e) => setThreshold(e.target.value)}
         />
       </div>
 
@@ -142,7 +152,7 @@ export default function CompliancePanel() {
         onClick={handleQuery}
         disabled={loading || !addressHash}
       >
-        {loading ? 'Querying...' : 'Query Compliance'}
+        {loading ? "Querying..." : "Query Compliance"}
       </button>
 
       {error && <div style={styles.error}>{error}</div>}
@@ -154,7 +164,9 @@ export default function CompliancePanel() {
             ...(result.exceeded ? styles.resultOver : styles.resultUnder),
           }}
         >
-          <strong>{result.exceeded ? 'Threshold Exceeded' : 'Under Threshold'}</strong>
+          <strong>
+            {result.exceeded ? "Threshold Exceeded" : "Under Threshold"}
+          </strong>
           <div style={styles.nullifierLabel}>Query Proof (Nullifier Hash):</div>
           <div style={styles.nullifier}>{result.nullifierHash}</div>
         </div>
